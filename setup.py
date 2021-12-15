@@ -10,6 +10,10 @@ setup(
     py_modules=find_packages(),
     install_requires=[
         'Click',
+        'pybids>=0.14',
+        'pandas',
+        'numpy',
+        'beautifulsoup4'
     ],
     entry_points={
         'console_scripts':[
