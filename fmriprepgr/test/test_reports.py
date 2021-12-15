@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from fmriprepgr.reports import _make_report_snippet, parse_report
+from ..reports import _make_report_snippet, parse_report
 
 
 def test_make_report_snippet():
