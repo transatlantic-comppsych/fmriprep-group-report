@@ -1,4 +1,5 @@
 from pathlib import Path
+from shutil import copy, copytree
 import numpy as np
 import pandas as pd
 from ..reports import _make_report_snippet, parse_report
@@ -59,7 +60,34 @@ def test_parse_report():
     None
     """
     test_data_dir = Path(__file__).parent.resolve() / 'data'
-    output = parse_report(test_data_dir / 'sub-20900test.html')
+    output = parse_report(test_data_dir / 'fmriprep/sub-20900.html')
     expected_output = pd.read_csv(test_data_dir / 'sub-20900test.csv')
     expected_output['subject'] = expected_output.subject.astype(str)
     assert expected_output.equals(output)
+
+def test_fmriprepgr(tmp_path, script_runner):
+    test_out_dir = tmp_path
+    test_data_dir = Path(__file__).parent.resolve() / 'data/fmriprep'
+    copytree(test_data_dir, test_out_dir / 'fmriprep')
+    ret = script_runner.run('fmriprepgr', test_out_dir.as_posix())
+
+    assert ret.success
+    expected_out_dir = test_data_dir / 'group'
+    out_dir = test_out_dir / 'group'
+    expected_files = sorted(expected_out_dir.glob('*'))
+    out_files = sorted(out_dir.glob('*'))
+    expected_file_names = np.array([pp.parts[-1] for pp in expected_files])
+    out_file_names = np.array([pp.parts[-1] for pp in out_files])
+    assert (expected_file_names == out_file_names).all()
+    # test that html files are generated correctly
+    for of, ef in zip(out_files, expected_files):
+        if ef.as_posix().split('.')[-1] == '.html':
+            econtent = ef.read_text()
+            ocontent = of.read_text()
+            assert ocontent == econtent
+    # test that links are valid
+    out_links = sorted((out_dir / 'sub-20900' / 'figures').glob('*'))
+    out_links += sorted((out_dir / 'sub-22293' / 'figures').glob('*'))
+    for ll in out_links:
+        assert ll.is_symlink()
+        assert ll.resolve().exists()
