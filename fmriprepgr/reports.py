@@ -111,7 +111,7 @@ def _make_report_snippet(row):
     id_ents['been_on_screen'] = False
     header_ents = {k:v for k,v in row.items() if k not in header_blacklist}
 
-    header_vals = [f'{k} <span class="bids-entity">{v}</span>"' for k,v in header_ents.items() if pd.notnull(v)]
+    header_vals = [f'{k} <span class="bids-entity">{v}</span>' for k,v in header_ents.items() if pd.notnull(v)]
     header = "<h2> " + ', '.join(header_vals) + "</h2>"
     snippet = f"""
     <div id="id-{row['idx']}_filename-{row['filename'].split('.')[0]}">
