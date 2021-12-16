@@ -61,9 +61,9 @@ def parse_report(report_path):
     report_elements['report_type'] = report_elements.desc
     dseg_ind = report_elements.report_type.isnull() & (report_elements.suffix == 'dseg')
     report_elements.loc[dseg_ind, 'report_type'] = report_elements.loc[dseg_ind, 'suffix']
-
-    t1w_ind = report_elements.report_type.isnull() & report_elements.space.notnull()
-    report_elements.loc[t1w_ind, 'report_type'] = report_elements.loc[t1w_ind, 'space']
+    if 'space' in report_elements.columns:
+        t1w_ind = report_elements.report_type.isnull() & report_elements.space.notnull()
+        report_elements.loc[t1w_ind, 'report_type'] = report_elements.loc[t1w_ind, 'space']
     return report_elements
 
 
