@@ -175,7 +175,7 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures='../.
 
     # make a consolidated report for each report type
     for report_type, rtdf in reports.groupby('report_type'):
-        rtdf = rtdf.copy()
+        rtdf = rtdf.copy().reset_index(drop=True)
         rtdf = rtdf.reset_index().rename(columns={'index': 'idx'})
         if reports_per_page is None:
             rtdf['chunk'] = 0
