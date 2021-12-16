@@ -16,6 +16,6 @@ Set to None if you want all reports on a single page
 --path_to_figures: The group reports are output to 
 `[path to fmriprep output directory]/group`. 
 In order to keep from wasting disk space by copying figures, figures directory for each subject are symlinked from
-`[path to fmriprep output directory]/group/sub-[subject]/figure` to the appropriate location.
+`[path to fmriprep output directory]/group/sub-[subject]/figures` to the appropriate location.
 By default, this should be `../../sub-{subject}/figures`, but if you've laid out your fmriprep output differently
 change this option to get the symlinks working.
