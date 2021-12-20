@@ -5,7 +5,7 @@ I've found it's easier to review things if all of the sub-reports of a given typ
 This package will make a set of consolidated reports from an fmriprep output directory.
 
 ## How to install:
-Clone the repo and pip install it. Will be on pypi once I've recovered my account.
+`pip install fmriprep-group-report`  
 
 ## How to run:
 `fmriprepgr [path to fmriprep output directory]`
