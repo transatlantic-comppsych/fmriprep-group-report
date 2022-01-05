@@ -7,7 +7,7 @@ setup(
     author_email='dylan.nielson@gmail.com',
     description='Make consolidated group reports from fmriprep output.',
     url='https://github.com/nimh-comppsych/fmriprep-group-report',
-    py_modules=find_packages(),
+    packages=find_packages(),
     install_requires=[
         'Click',
         'pybids>=0.14',
