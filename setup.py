@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='fmriprep-group-report',
-    version='0.0.1',
+    version='0.0.2',
     author='Dylan M. Nielson',
     author_email='dylan.nielson@gmail.com',
     description='Make consolidated group reports from fmriprep output.',
