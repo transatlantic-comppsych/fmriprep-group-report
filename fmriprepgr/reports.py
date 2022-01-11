@@ -256,6 +256,9 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures='../.
                 orig_fig_dir = Path(os.path.join(*path_parts))
             else:
                 orig_fig_dir = path_to_figures.format(subject=subject)
+                if not (subj_group_fig_dir / orig_fig_dir).exists():
+                    raise ValueError(f"path_to_figures is not correct. Based on {path_to_figures}, "
+                                     f"{subj_group_fig_dir / orig_fig_dir} should exist, but it doesn't.")
             if not subj_group_fig_dir.is_symlink():
                 subj_group_fig_dir.symlink_to(orig_fig_dir, target_is_directory=True)
 
