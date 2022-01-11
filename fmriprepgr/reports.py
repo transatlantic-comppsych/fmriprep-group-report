@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -5,7 +6,7 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag
 from bids import BIDSLayout
 from bids.tests import get_test_data_path
-from ._html_snippets import html_head, html_foot, reviewer_initials, nav
+from ._html_snippets import _generate_html_head, html_foot, reviewer_initials, nav
 import json
 import click
 
@@ -25,12 +26,17 @@ def parse_report(report_path):
         DataFrame of the images in the report and parsable metadata about those.
     """
     report_path = Path(report_path)
+    # create a nested data structure from an html report
     soup = BeautifulSoup(report_path.read_text(), 'html.parser')
     file_divs = soup.findAll(attrs={'class':'svg-reportlet'})
+    # we're going to build a dataframe called report elements by
+    # appending row dictionaries to this list
     report_elements = []
+    # default the previous run title to Nan
     prev_run_title = np.nan
     for fd in file_divs:
         fig_path = fd.get('src', fd.get('data'))
+        # initialize the
         row = layout.parse_file_entities(fig_path, config=['bids', 'derivatives'])
         row['path'] = fig_path
         row['filename'] = Path(fig_path).parts[-1]
@@ -40,6 +46,7 @@ def parse_report(report_path):
         # then it should be ok to use the previous one
         run_titles = fd.parent.findAll("h3", attrs={"class": "run-title"})
         try:
+            # validation may be a better name than retrieval
             row['run_title'] = _unique_retrieval(run_titles, elem_identifier, 'run-title')
             prev_run_title = row['run_title']
         except ValueError:
@@ -137,8 +144,8 @@ def _make_report_snippet(row):
 @click.command()
 @click.option('--reports_per_page', default=50,
               help='How many figures per page. If None, then put them all on a single page.')
-@click.option('--path_to_figures', default='../../sub-{subject}/figures',
-              help="Relative path from group/sub-{subject} to subject's figure directory")
+@click.option('--path_to_figures', default=None,
+              help="Relative path from group/sub-{subject} to subject's figure directory. If None, infer from report location.")
 @click.argument('fmriprep_output_path')
 def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures='../../sub-{subject}/figures'):
     """
@@ -147,12 +154,71 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures='../.
     ----------
     fmriprep_output_path : str
         Path to the fmriprep output
-    reports_per_page : int or None
+    reports_per_page : int or None, optional
         How many figures per page. If None, then put them all on a single page.
-    path_to_figures : str
-        Relative path from group/sub-{subject} to subject's figure directory
+    path_to_figures : str, optional
+        Relative path from group/sub-{subject} to subject's figure directory. If None, infer from report location.
     """
     fmriprep_output_path = Path(fmriprep_output_path)
+    # Assuming this is what the fmriprep directory looks like before running this
+    """
+    fmriprep
+        ├── dataset_description.json
+        ├── desc-aparcaseg_dseg.tsv
+        ├── desc-aseg_dseg.tsv
+        ├── logs
+        │    └── ...
+        ├── sub-20900
+        │    └── anat
+        │         └── ...
+        │    └── figures
+        │         ├── sub-20900_acq-mprage_rec-prenorm_run-1_desc-reconall_T1w.svg
+        │         └── ...
+        │    └── ses-v1
+        │         └── anat
+        │              └── ...
+        │         └── func
+        │              └── ...
+        │    └── ses-v2
+        │         └── anat
+        │              └── ...
+        │         └── func
+        │              └── ...
+        ├── sub-20900.html
+        ├── sub-22293
+        │    └── anat
+        │         └── ...
+        │     └── figures
+        │         ├── sub-22293_acq-mprage_rec-prenorm_run-1_desc-reconall_T1w.svg
+        │         └── ...
+        │    └── ses-v1
+        │         └── anat
+        │              └── ...
+        │         └── func
+        │              └── ...
+        │    └── ses-v2
+        │         └── anat
+        │              └── ...
+        │         └── func
+        │              └── ...
+        ├── sub-22293.html
+        └── ...
+    """
+    # The new group directory created will look like this
+    """
+    fmriprep
+        ├── group
+        │   ├── consolidated_dseg_000.html
+        │   ├── consolidated_MNI152NLin2009cAsym_000.html
+        │   ├── consolidated_MNI152NLin6Asym_000.html
+        │   ├── consolidated_pepolar_000.html
+        │   ├── consolidated_reconall_000.html
+        │   ├── sub-20900
+        │   │   └── figures -> ../../sub-20900/figures
+        │   └── sub-22293
+        │       └── figures -> ../../sub-22293/figures
+        └── ...
+    """
     group_dir = fmriprep_output_path / 'group'
     group_dir.mkdir(exist_ok=True)
     # parse all the subject reports
@@ -166,8 +232,30 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures='../.
             subject = layout.parse_file_entities(report_path)['subject']
             subj_group_dir = group_dir / f'sub-{subject}'
             subj_group_dir.mkdir(exist_ok=True)
-            orig_fig_dir = path_to_figures.format(subject=subject)
             subj_group_fig_dir = subj_group_dir / 'figures'
+
+            if path_to_figures is None:
+                expected_subj_fig_dir = report_path.parent / f'sub-{subject}' / 'figures'
+                if not expected_subj_fig_dir.exists():
+                    FileNotFoundError(f"path_to_figures was not specified and the subject figures dir for sub-{subject}"
+                                      " was not at the expected location: {expected_subj_fig_dir}. Please use "
+                                      " path_to_figures to specify the correct relative path from the group dir to the"
+                                      " subject figures directory.")
+                # I don't like any of the relative path tools in python
+                # To get the relative path I want I've got to start from a place on the common path of
+                # expected_subj_fig_dir, which should be the fmriprep_output_path
+                bad_rel = expected_subj_fig_dir.relative_to(fmriprep_output_path)
+                # bad_rel contains the common element (in this case "fmriprep") so get the parts without that
+                good_parts = list(bad_rel.parts[1:])
+                # figure out how many levels down the subj_group_fig_dir is (should be 2, but in case the above code
+                # changes)
+                lvls_down = len(subj_group_fig_dir.relative_to(fmriprep_output_path).parts) - 1
+                # assemble the path parts into a list
+                path_parts = (['..'] * lvls_down + good_parts)
+                # join them with os.path.join
+                orig_fig_dir = Path(os.path.join(*path_parts))
+            else:
+                orig_fig_dir = path_to_figures.format(subject=subject)
             if not subj_group_fig_dir.is_symlink():
                 subj_group_fig_dir.symlink_to(orig_fig_dir, target_is_directory=True)
 
@@ -183,9 +271,10 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures='../.
             rtdf['chunk'] = rtdf.idx // reports_per_page
         for chunk, cdf in rtdf.groupby('chunk'):
             consolidated_path = group_dir / f'consolidated_{report_type}_{chunk:03d}.html'
+            dl_file_name =  f'consolidated_{report_type}_{chunk:03d}.csv'
             lines = '\n'.join([_make_report_snippet(row) for row in cdf.to_dict('records')])
 
-            rpt_text = '\n'.join([html_head,
+            rpt_text = '\n'.join([_generate_html_head(dl_file_name),
                                   nav,
                                   reviewer_initials,
                                   lines,

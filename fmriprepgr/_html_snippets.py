@@ -74,7 +74,7 @@ html_head = r"""<?xml version="1.0" encoding="utf-8" ?>
     let link = document.createElement('a')
     link.id = 'download-csv'
     link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv));
-    link.setAttribute('download', 'manual_qc.csv');
+    link.setAttribute('download', 'thistextissolongitmustabsolutelybeuniqueright');
     document.body.appendChild(link)
     document.querySelector('#download-csv').click()
   }
@@ -181,3 +181,17 @@ nav= """<nav class="navbar fixed-top navbar-expand-lg navbar-light bg-light">
          </div>
 </div>
 </nav>"""
+
+
+def _generate_html_head(dl_file_name):
+    """
+    generate an html head block where the name of the downloaded file is set appropriately.
+    Parameters
+    ----------
+    dl_file_name : str
+
+    Returns
+    -------
+    str
+    """
+    return html_head.replace('thistextissolongitmustabsolutelybeuniqueright', dl_file_name)
