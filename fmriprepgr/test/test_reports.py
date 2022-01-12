@@ -81,7 +81,7 @@ def test_fmriprepgr(tmp_path, script_runner):
     assert (expected_file_names == out_file_names).all()
     # test that html files are generated correctly
     for of, ef in zip(out_files, expected_files):
-        if ef.as_posix().split('.')[-1] == '.html':
+        if ef.as_posix().split('.')[-1] == 'html':
             econtent = ef.read_text()
             ocontent = of.read_text()
             assert ocontent == econtent
@@ -89,5 +89,4 @@ def test_fmriprepgr(tmp_path, script_runner):
     out_links = sorted((out_dir / 'sub-20900' / 'figures').glob('*'))
     out_links += sorted((out_dir / 'sub-22293' / 'figures').glob('*'))
     for ll in out_links:
-        assert ll.is_symlink()
-        assert ll.resolve().exists()
+        assert ll.exists()
