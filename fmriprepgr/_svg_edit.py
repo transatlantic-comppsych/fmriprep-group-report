@@ -118,7 +118,7 @@ def _drop_image(fig_path, new_path, image_to_drop):
     header, origbg, middle, origfg, tail = _parse_figure(fig_path)
     new_path = Path(new_path)
 
-    if image_to_drop == 'background':
+    if image_to_drop == 'foreground':
         newbg = origfg
         newbg[0] = newbg[0].replace('foreground', 'background')
         new_svg = '\n'.join(header + newbg + middle + tail)

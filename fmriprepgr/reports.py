@@ -1,15 +1,16 @@
 import os
+from shutil import copytree
+import json
 from pathlib import Path
 import pandas as pd
 import numpy as np
 from bs4 import BeautifulSoup
 from bs4.element import Tag
+import click
 from bids import BIDSLayout
 from bids.tests import get_test_data_path
 from ._html_snippets import _generate_html_head, html_foot, reviewer_initials, nav
-import json
-import click
-
+from ._svg_edit import _flip_images, _drop_image
 layout = BIDSLayout(Path(get_test_data_path()) / 'synthetic')
 
 def parse_report(report_path):
@@ -118,6 +119,7 @@ def _make_report_snippet(row):
     id_ents['been_on_screen'] = False
     header_ents = {k:v for k,v in row.items() if k not in header_blacklist}
 
+    # TODO: make this header a path to the relevant image
     header_vals = [f'{k} <span class="bids-entity">{v}</span>' for k,v in header_ents.items() if pd.notnull(v)]
     header = "<h2> " + ', '.join(header_vals) + "</h2>"
     snippet = f"""
@@ -145,19 +147,27 @@ def _make_report_snippet(row):
 @click.option('--reports_per_page', default=50,
               help='How many figures per page. If None, then put them all on a single page.')
 @click.option('--path_to_figures', default=None,
-              help="Relative path from group/sub-{subject} to subject's figure directory. If None, infer from report location.")
+              help="Relative path from group/sub-{subject} to subject's figure directory."
+                   " If None, infer from report location.")
+@click.option('--flip_images', '-f', default=(), multiple=True,
+              help="The names of any report subsections where you want to flip which image is shown when mousing over."
+                   " Can be passed multiple times to specify multiple subsections.")
+@click.option('--drop_background', default=(), multiple=True,
+              help="The names of any report subsections where you want to drop the image that shows before mousing over"
+                   " and just see the image that's shown when mousing over. Can be passed multiple times to specify"
+                   " multiple subsections.")
+@click.option('--drop_foreground', default=(), multiple=True,
+              help="The names of any report subsections where you want to drop the image that shows after mousing over"
+                   " and just see the image that's shown before mousing over. Can be passed multiple times to specify"
+                   " multiple subsections.")
 @click.argument('fmriprep_output_path')
-def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures='../../sub-{subject}/figures'):
+def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
+                flip_images=(), drop_background=(), drop_foreground=()):
     """
-    Make a consolidated report from an fmripep output directory.
-    Parameters
-    ----------
-    fmriprep_output_path : str
-        Path to the fmriprep output
-    reports_per_page : int or None, optional
-        How many figures per page. If None, then put them all on a single page.
-    path_to_figures : str, optional
-        Relative path from group/sub-{subject} to subject's figure directory. If None, infer from report location.
+    Make a consolidated report from an fMRIPrep output directory. Optionally, you can also tweak the images in the
+     reports. Using flip_images, drop_background, or drop_foreground will mean that images are copied to the group
+     report directory instead of being symlinked so that the original figures are not modified. Each report type can
+     only be modified in a single way.
     """
     fmriprep_output_path = Path(fmriprep_output_path)
     # Assuming this is what the fmriprep directory looks like before running this
@@ -219,6 +229,29 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures='../.
         │       └── figures -> ../../sub-22293/figures
         └── ...
     """
+    # check to see if we're symlinking or copying
+    if len(flip_images) == 0 and len(drop_background) == 0 and len(drop_foreground) == 0:
+        image_changes = False
+    else:
+        image_changes = True
+        flip_images = set(flip_images)
+        drop_background = set(drop_background)
+        drop_foreground = set(drop_foreground)
+        if not flip_images.isdisjoint(drop_foreground):
+            intersection = flip_images.intersection(drop_foreground)
+            raise ValueError(f"Each report type may only be modified in a single way. {intersection} is specified for "
+                             f"both flip_images and drop_foreground.")
+        if not flip_images.isdisjoint(drop_background):
+            intersection = flip_images.intersection(drop_background)
+            raise ValueError(f"Each report type may only be modified in a single way. {intersection} is specified for "
+                             f"both flip_images and drop_background.")
+        if not drop_foreground.isdisjoint(drop_background):
+            intersection = drop_foreground.intersection(drop_background)
+            raise ValueError(f"Each report type may only be modified in a single way. {intersection} is specified for "
+                             f"both drop_foreground and drop_background.")
+
+
+
     group_dir = fmriprep_output_path / 'group'
     group_dir.mkdir(exist_ok=True)
     # parse all the subject reports
@@ -244,9 +277,7 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures='../.
                 # I don't like any of the relative path tools in python
                 # To get the relative path I want I've got to start from a place on the common path of
                 # expected_subj_fig_dir, which should be the fmriprep_output_path
-                bad_rel = expected_subj_fig_dir.relative_to(fmriprep_output_path)
-                # bad_rel contains the common element (in this case "fmriprep") so get the parts without that
-                good_parts = list(bad_rel.parts[1:])
+                good_parts = list(expected_subj_fig_dir.relative_to(fmriprep_output_path).parts)
                 # figure out how many levels down the subj_group_fig_dir is (should be 2, but in case the above code
                 # changes)
                 lvls_down = len(subj_group_fig_dir.relative_to(fmriprep_output_path).parts) - 1
@@ -256,10 +287,15 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures='../.
                 orig_fig_dir = Path(os.path.join(*path_parts))
             else:
                 orig_fig_dir = path_to_figures.format(subject=subject)
-                if not (subj_group_fig_dir / orig_fig_dir).exists():
+                if not (subj_group_dir / orig_fig_dir).exists():
                     raise ValueError(f"path_to_figures is not correct. Based on {path_to_figures}, "
                                      f"{subj_group_fig_dir / orig_fig_dir} should exist, but it doesn't.")
-            if not subj_group_fig_dir.is_symlink():
+            if subj_group_fig_dir.is_symlink() or subj_group_fig_dir.exists():
+                raise ValueError(f"{subj_group_fig_dir} exists and would be overwritten. Rename or delete the existing "
+                                 f"group directory before running fmriprepgr.")
+            if image_changes:
+                copytree(subj_group_dir / orig_fig_dir, subj_group_fig_dir)
+            else:
                 subj_group_fig_dir.symlink_to(orig_fig_dir, target_is_directory=True)
 
     reports = pd.concat(reports).reset_index(drop=True)
@@ -268,6 +304,25 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures='../.
     for report_type, rtdf in reports.groupby('report_type'):
         rtdf = rtdf.copy().reset_index(drop=True)
         rtdf = rtdf.reset_index().rename(columns={'index': 'idx'})
+
+        # deal with image changes
+        if image_changes:
+            if (report_type in flip_images) or (report_type in drop_foreground) or (report_type in drop_background):
+                for ix, row in rtdf.iterrows():
+                    subj_group_dir = group_dir / f'sub-{row.subject}' / 'figures'
+                    image_path = subj_group_dir / row.filename
+                    if (not image_path.exists()):
+                        raise FileNotFoundError(f"Something's gone wrong, {image_path} doesn't exist, but should.")
+                    if image_path.is_symlink():
+                        raise ValueError(f"Something's gone wrong, {image_path} is a symlink, but should have been "
+                                         f"copied.")
+                    if report_type in flip_images:
+                        _flip_images(image_path, image_path)
+                    elif report_type in drop_foreground:
+                        _drop_image(image_path, image_path, "foreground")
+                    elif report_type in drop_background:
+                        _drop_image(image_path, image_path, "background")
+
         if reports_per_page is None:
             rtdf['chunk'] = 0
         else:
