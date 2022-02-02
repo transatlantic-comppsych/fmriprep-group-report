@@ -330,7 +330,7 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
         for chunk, cdf in rtdf.groupby('chunk'):
             consolidated_path = group_dir / f'consolidated_{report_type}_{chunk:03d}.html'
             dl_file_name =  f'consolidated_{report_type}_{chunk:03d}.csv'
-            cdf = cdf.reset_index().drop('idx', axis=1).rename().rename(columns={'index': 'idx'})
+            cdf = cdf.reset_index().drop('idx', axis=1).rename(columns={'index': 'idx'})
             lines = '\n'.join([_make_report_snippet(row) for row in cdf.to_dict('records')])
 
             rpt_text = '\n'.join([_generate_html_head(dl_file_name),
