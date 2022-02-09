@@ -121,7 +121,7 @@ def _make_report_snippet(row):
 
     # TODO: make this header a path to the relevant image
     header_vals = [f'{k} <span class="bids-entity">{v}</span>' for k,v in header_ents.items() if pd.notnull(v)]
-    header = "<h2> " + ', '.join(header_vals) + "</h2>"
+    header = f" <h2>idx-{row['idx']}: " + ', '.join(header_vals) + "</h2>"
     snippet = f"""
     <div id="id-{row['idx']}_filename-{row['filename'].split('.')[0]}">
       <script type="text/javascript">
@@ -254,6 +254,30 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
 
     group_dir = fmriprep_output_path / 'group'
     group_dir.mkdir(exist_ok=True)
+    # write parameters
+    params = {'fmriprep_output_path': fmriprep_output_path.as_posix(),
+              'reports_per_page': reports_per_page,
+              'path_to_figures': path_to_figures,
+              'flip_images': list(flip_images),
+              'drop_background': list(drop_background),
+              'drop_foreground': list(drop_foreground)}
+    try:
+        bids_version = json.loads((fmriprep_output_path / 'dataset_description.json').read_text())['BIDSVersion']
+    except: # I know a naked except is generally bad, but I don't ever want a failure here to stop execution.
+        bids_version = 'unknown'
+    dataset_description = {
+        'Name': 'fMRIPrep-Group-Report output',
+        'BIDSVersion': bids_version,
+        'DatasetType': 'derivative',
+        'GeneratedBy': [
+            {
+                'Name': 'fMRIPrep-Group-Report',
+                'CodeURL': "https://github.com/nimh-comppsych/fmriprep-group-report",
+                'Parameters': params,
+            }
+        ]
+    }
+    (group_dir / 'dataset_description.json').write_text(json.dumps(dataset_description, indent=2))
     # parse all the subject reports
     report_paths = sorted(fmriprep_output_path.glob('**/sub-*.html'))
     reports = []
