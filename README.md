@@ -2,7 +2,7 @@
 [![Run Python Tests](https://github.com/nimh-comppsych/fmriprep-group-report/actions/workflows/ci.yml/badge.svg)](https://github.com/nimh-comppsych/fmriprep-group-report/actions/workflows/ci.yml)  
 Fmriprep produces a bunch of subject level reports and each subject level report has many sub-reports. 
 I've found it's easier to review things if all of the sub-reports of a given type are consolidated into a single page. 
-This package will make a set of consolidated reports from an fmriprep output directory.
+This package will make a set of consolidated reports from an fmriprep (v21.0.0 or later) output directory.
 
 ## How to install:
 `pip install fmriprep-group-report`  
