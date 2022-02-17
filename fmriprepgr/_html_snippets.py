@@ -71,11 +71,18 @@ html_head = r"""<?xml version="1.0" encoding="utf-8" ?>
     }
 
     // Once we are done looping, download the .csv by creating a link
-    let link = document.createElement('a')
-    link.id = 'download-csv'
-    link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv));
-    link.setAttribute('download', 'thistextissolongitmustabsolutelybeuniqueright');
-    document.body.appendChild(link)
+    // if a link has already been created, update it
+    if (document.querySelector('#download-csv') == null){
+      let link = document.createElement('a')
+      link.id = 'download-csv'
+      link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv));
+      link.setAttribute('download', 'thistextissolongitmustabsolutelybeuniqueright');
+      document.body.appendChild(link)
+    } else {
+      let link = document.querySelector('#download-csv')
+      link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv));
+      link.setAttribute('download', 'thistextissolongitmustabsolutelybeuniqueright');
+    }
     document.querySelector('#download-csv').click()
   }
 

@@ -52,17 +52,17 @@
 
               // This is to not add a comma at the last cell
               // The '\r\n' adds a new line
-              csv += key + (keysCounter+1 < keysAmount ? ',' : '\r\n' )
+              csv += key + (keysCounter+1 < keysAmount ? '\t' : '\r\n' )
               keysCounter++
            }
            let keysCounterb = 0
            for(let key in items[row]){
-               csv += items[row][key] + (keysCounterb+1 < keysAmount ? ',' : '\r\n' )
+               csv += items[row][key] + (keysCounterb+1 < keysAmount ? '\t' : '\r\n' )
                keysCounterb++
            }
         }else{
            for(let key in items[row]){
-               csv += items[row][key] + (keysCounter+1 < keysAmount ? ',' : '\r\n' )
+               csv += items[row][key] + (keysCounter+1 < keysAmount ? '\t' : '\r\n' )
                keysCounter++
            }
         }
@@ -71,11 +71,18 @@
     }
 
     // Once we are done looping, download the .csv by creating a link
-    let link = document.createElement('a')
-    link.id = 'download-csv'
-    link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv));
-    link.setAttribute('download', 'consolidated_MNI152NLin6Asym_001.csv');
-    document.body.appendChild(link)
+    // if a link has already been created, update it
+    if (document.querySelector('#download-csv') == null){
+      let link = document.createElement('a')
+      link.id = 'download-csv'
+      link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv));
+      link.setAttribute('download', 'consolidated_MNI152NLin6Asym_001.tsv');
+      document.body.appendChild(link)
+    } else {
+      let link = document.querySelector('#download-csv')
+      link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv));
+      link.setAttribute('download', 'consolidated_MNI152NLin6Asym_001.tsv');
+    }
     document.querySelector('#download-csv').click()
   }
 
@@ -152,7 +159,7 @@ div#boilerplate pre {
            Ratings: <span id="nrpass" class="badge badge-success">0</span> <span id="nrfail" class="badge badge-danger">0</span> <span id="nrtodo" class="badge badge-warning">0</span>
          </div>
          <div class="navbar-text">
-           <button type="button" class="btn btn-info btn-sm" id="csv_download" onclick="get_csv(subjs)">Download CSV</button>
+           <button type="button" class="btn btn-info btn-sm" id="csv_download" onclick="get_csv(subjs)">Download TSV</button>
 
          </div>
 </div>
@@ -163,7 +170,7 @@ div#boilerplate pre {
 
     <div id="id-0_filename-sub-22293_acq-mprage_rec-prenorm_run-1_space-MNI152NLin6Asym_T1w">
       <script type="text/javascript">
-        var subj_qc = {"idx": 0, "subject": "22293", "acquisition": "mprage", "reconstruction": "prenorm", "run": 1, "suffix": "T1w", "space": "MNI152NLin6Asym", "desc": NaN, "session": NaN, "report_type": "MNI152NLin6Asym", "chunk": 1, "been_on_screen": false}
+        var subj_qc = {"idx": 0, "subject": "22293", "acquisition": "mprage", "reconstruction": "prenorm", "run": 1, "suffix": "T1w", "space": "MNI152NLin6Asym", "desc": NaN, "session": NaN, "report_type": "MNI152NLin6Asym", "chunk": 1, "been_on_screen": false, "rater": NaN, "report": NaN, "note": NaN}
       </script>
        <h2>idx-0: subject <span class="bids-entity">22293</span>, acquisition <span class="bids-entity">mprage</span>, reconstruction <span class="bids-entity">prenorm</span>, run <span class="bids-entity">1</span>, suffix <span class="bids-entity">T1w</span>, space <span class="bids-entity">MNI152NLin6Asym</span></h2>
       <div class="radio">
