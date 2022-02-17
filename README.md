@@ -1,6 +1,5 @@
 # FMRIPrep Group Report
 [![Run Python Tests](https://github.com/nimh-comppsych/fmriprep-group-report/actions/workflows/ci.yml/badge.svg)](https://github.com/nimh-comppsych/fmriprep-group-report/actions/workflows/ci.yml)  
-<<<<<<< Updated upstream
 Fmriprep produces a bunch of subject level reports and each subject level report has many sub-reports. 
 I've found it's easier to review things if all of the sub-reports of a given type are consolidated into a single page. 
 Fmriprep produces a bunch of subject level reports ([like](https://nimh-comppsych.github.io/fmriprep-group-report/fmriprepgr/test/data/fmriprep/sub-20900.html) [this](https://nimh-comppsych.github.io/fmriprep-group-report//fmriprepgr/test/data/fmriprep/sub-22293.html)) and each subject level report has many sub-reports. 
