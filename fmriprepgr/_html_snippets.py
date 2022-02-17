@@ -52,17 +52,17 @@ html_head = r"""<?xml version="1.0" encoding="utf-8" ?>
 
               // This is to not add a comma at the last cell
               // The '\r\n' adds a new line
-              csv += key + (keysCounter+1 < keysAmount ? ',' : '\r\n' )
+              csv += key + (keysCounter+1 < keysAmount ? '\t' : '\r\n' )
               keysCounter++
            }
            let keysCounterb = 0
            for(let key in items[row]){
-               csv += items[row][key] + (keysCounterb+1 < keysAmount ? ',' : '\r\n' )
+               csv += items[row][key] + (keysCounterb+1 < keysAmount ? '\t' : '\r\n' )
                keysCounterb++
            }
         }else{
            for(let key in items[row]){
-               csv += items[row][key] + (keysCounter+1 < keysAmount ? ',' : '\r\n' )
+               csv += items[row][key] + (keysCounter+1 < keysAmount ? '\t' : '\r\n' )
                keysCounter++
            }
         }
@@ -176,7 +176,7 @@ nav= """<nav class="navbar fixed-top navbar-expand-lg navbar-light bg-light">
            Ratings: <span id="nrpass" class="badge badge-success">0</span> <span id="nrfail" class="badge badge-danger">0</span> <span id="nrtodo" class="badge badge-warning">0</span>
          </div>
          <div class="navbar-text">
-           <button type="button" class="btn btn-info btn-sm" id="csv_download" onclick="get_csv(subjs)">Download CSV</button>
+           <button type="button" class="btn btn-info btn-sm" id="csv_download" onclick="get_csv(subjs)">Download TSV</button>
 
          </div>
 </div>

@@ -117,6 +117,9 @@ def _make_report_snippet(row):
     id_ents = {k:v for k,v in row.items() if k not in id_blacklist}
     # needed for scripting to update counts as you scroll around
     id_ents['been_on_screen'] = False
+    id_ents['rater'] = np.NaN
+    id_ents['report'] = np.NaN
+    id_ents['note'] = np.NaN
     header_ents = {k:v for k,v in row.items() if k not in header_blacklist}
 
     # TODO: make this header a path to the relevant image
@@ -353,7 +356,7 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
             rtdf['chunk'] = rtdf.idx // reports_per_page
         for chunk, cdf in rtdf.groupby('chunk'):
             consolidated_path = group_dir / f'consolidated_{report_type}_{chunk:03d}.html'
-            dl_file_name =  f'consolidated_{report_type}_{chunk:03d}.csv'
+            dl_file_name =  f'consolidated_{report_type}_{chunk:03d}.tsv'
             cdf = cdf.reset_index(drop=True).reset_index().drop('idx', axis=1).rename(columns={'index': 'idx'})
             lines = '\n'.join([_make_report_snippet(row) for row in cdf.to_dict('records')])
 
