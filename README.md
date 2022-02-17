@@ -15,8 +15,14 @@ This package will make a set of consolidated reports from an fmriprep (v21.0.0 o
 ## Options: 
 --reports_per_page: How many sub-reports do you want on each page? Default is 50. 
 Set to None if you want all reports on a single page  
---path_to_figures: if your fmriprep directories are laid out in a non-standard way, you'll need to use this to specify
+--path_to_figures: If your fmriprep directories are laid out in a non-standard way, you'll need to use this to specify
 the correct relative path. See paths discussion below.
+### Image modification options
+Some of the SVGs produced by fmriprep aren't setup in a way that facilitates bulk review. Here are some options to manipulate the SVGs. Note that if you use any of these options, all of the report SVGs will be copied instead of symlinked. For all of these options, pass it multiple times if there are multiple sub-reports with SVGs you want to modify.  
+--flip_images:  Flip the background and foreground on SVGs that change when you mouse over. For example the registrations to standard space have the standard space image till you mouse over them. If you want to be able to quickly spot weirdness, it's easier to have the subject images appear first and the standard space images appear on mouse over. `--flip_images MNI152NLin6Asym` will flip the `MNI152NLin6Asym` registrations. If there's more than one you want to change, pass it twice: `--flip_images MNI152NLin6Asym --flip_images MNI152NLin2009cAsym`.  
+--drop_background: Modify the SVGs for a given sub-report to drop the image that appears before mousing over.  
+--drop_foreground: Modify the SVGs for a given sub-report to drop the image that appears after mousing over.
+
 
 ## Paths
 You probably won't have to worry about this. Try it once and see if it's worked, if you get an error mentioning 
