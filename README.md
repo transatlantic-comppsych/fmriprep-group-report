@@ -3,7 +3,7 @@
 Fmriprep produces a bunch of subject level reports and each subject level report has many sub-reports. 
 I've found it's easier to review things if all of the sub-reports of a given type are consolidated into a single page. 
 Fmriprep produces a bunch of subject level reports ([like](https://nimh-comppsych.github.io/fmriprep-group-report/fmriprepgr/test/data/fmriprep/sub-20900.html) [this](https://nimh-comppsych.github.io/fmriprep-group-report//fmriprepgr/test/data/fmriprep/sub-22293.html)) and each subject level report has many sub-reports. 
-I've found it's easier to review things if all of the sub-reports of a given type are consolidated into a single page ([like](https://nimh-comppsych.github.io/fmriprep-group-report/fmriprepgr/test/data/fmriprep/group/consolidated_dseg_000.html) [this](https://nimh-comppsych.github.io/fmriprep-group-report//fmriprepgr/test/data/fmriprep/group/consolidated_reconall_000.html)). The consolidated pages also let you perform the qc serverlessly on each page and download a csv of your ratings. 
+I've found it's easier to review things if all of the sub-reports of a given type are consolidated into a single page ([like](https://nimh-comppsych.github.io/fmriprep-group-report/fmriprepgr/test/data/fmriprep/group/consolidated_dseg_000.html) [this](https://nimh-comppsych.github.io/fmriprep-group-report//fmriprepgr/test/data/fmriprep/group/consolidated_reconall_000.html)). The consolidated pages also let you perform the qc serverlessly on each page and download a tsv of your ratings. 
 This package will make a set of consolidated reports from an fmriprep (v21.0.0 or later) output directory.
 
 ## How to install:
@@ -24,8 +24,9 @@ Some of the SVGs produced by fmriprep aren't setup in a way that facilitates bul
 --drop_foreground: Modify the SVGs for a given sub-report to drop the image that appears after mousing over.
 
 ## Report features
-Counts in the header tell you how many good (green), bad (red) and unreviewed images (yellow) remain on this page. You can enter your initials so that the reviewer identity will be saved in the csv when you download it.  
-<img width="895" alt="header_example" src="https://user-images.githubusercontent.com/5289368/154523835-6a8f1e57-c8bb-4f03-b2be-012d5c9fd91b.png">
+Counts in the header tell you how many good (green), bad (red) and unreviewed images (yellow) remain on this page. You can enter your initials so that the reviewer identity will be saved in the tsv when you download it.
+<img width="815" alt="header_example" src="https://user-images.githubusercontent.com/5289368/154563861-5acacec7-7587-485d-b92f-546e9dab5428.png">
+
 
 Each image has an index (idx-0 in this case), indicating which image on the page it is, which makes it much easier to find images that are problematic when you're reviewing someone else's QC. It can be rated as good or bad, and there's a free text field for notes. Don't put commas in your notes though.
 <img width="897" alt="image_example" src="https://user-images.githubusercontent.com/5289368/154523867-9909f37f-1218-4d60-85a6-c7411d5d7096.png">
