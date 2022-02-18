@@ -1,5 +1,6 @@
 import os
 from shutil import copytree
+import re
 import json
 from pathlib import Path
 import pandas as pd
@@ -72,7 +73,20 @@ def parse_report(report_path):
     if 'space' in report_elements.columns:
         t1w_ind = report_elements.report_type.isnull() & report_elements.space.notnull()
         report_elements.loc[t1w_ind, 'report_type'] = report_elements.loc[t1w_ind, 'space']
-    return report_elements
+
+    # get fmriprep version from the fmriprep html report
+    li_text = []
+    for ultag in soup.find_all('div', {'id': 'About'}):
+        for litag in ultag.find_all('li'):
+            li_text.append(litag.text)
+
+    # Get only the numbers for the fmriprep version
+    for li in li_text:
+        re_match = re.findall(r'fMRIPrep version: .*', li)
+        if re_match:
+            fmriprep_version = re_match[0].strip('fMRIPrep version: ')
+
+    return report_elements, fmriprep_version
 
 
 def _unique_retrieval(element_list, elem_identifier, search_identifier):
@@ -284,46 +298,73 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
     # parse all the subject reports
     report_paths = sorted(fmriprep_output_path.glob('**/sub-*.html'))
     reports = []
-    for report_path in report_paths:
+    for report_idx, report_path in enumerate(report_paths):
         if not 'figures' in report_path.parts:
-            reports.append(parse_report(report_path))
+            report, fmriprep_version = parse_report(report_path)
+            reports.append(report)
 
             # symlink figures directory into place
             subject = layout.parse_file_entities(report_path)['subject']
             subj_group_dir = group_dir / f'sub-{subject}'
             subj_group_dir.mkdir(exist_ok=True)
-            subj_group_fig_dir = subj_group_dir / 'figures'
 
+            orig_fig_dirs = []
             if path_to_figures is None:
-                expected_subj_fig_dir = report_path.parent / f'sub-{subject}' / 'figures'
-                if not expected_subj_fig_dir.exists():
-                    FileNotFoundError(f"path_to_figures was not specified and the subject figures dir for sub-{subject}"
-                                      " was not at the expected location: {expected_subj_fig_dir}. Please use "
-                                      " path_to_figures to specify the correct relative path from the group dir to the"
-                                      " subject figures directory.")
-                # I don't like any of the relative path tools in python
-                # To get the relative path I want I've got to start from a place on the common path of
-                # expected_subj_fig_dir, which should be the fmriprep_output_path
-                good_parts = list(expected_subj_fig_dir.relative_to(fmriprep_output_path).parts)
-                # figure out how many levels down the subj_group_fig_dir is (should be 2, but in case the above code
-                # changes)
-                lvls_down = len(subj_group_fig_dir.relative_to(fmriprep_output_path).parts) - 1
-                # assemble the path parts into a list
-                path_parts = (['..'] * lvls_down + good_parts)
-                # join them with os.path.join
-                orig_fig_dir = Path(os.path.join(*path_parts))
+                # check fmriprep version
+                if fmriprep_version < '21.0.0':
+                    sessions = reports[report_idx]['session'].unique()
+                    # drop the nan session
+                    sessions = [session for session in sessions if str(session) != 'nan']
+                    expected_subj_fig_dirs = [report_path.parent / f'sub-{subject}' / f'ses-{session}' / 'figures'
+                                              for session in sessions]
+                    # Create session folders
+                    group_session_dirs = [subj_group_dir / f'ses-{session}' for session in sessions]
+                    for group_session_dir in group_session_dirs:
+                        group_session_dir.mkdir(exist_ok=True)
+                    # append 'figures' folders as the consolidated report expect all figures to be inside a figures folder
+                    subj_group_fig_dirs = [group_session_dir / 'figures' for group_session_dir in group_session_dirs]
+
+                    # append the figures folder
+                    expected_subj_fig_dirs.append(report_path.parent / f'sub-{subject}' / 'figures')
+                    subj_group_fig_dirs.append(subj_group_dir / 'figures')
+
+                else:
+                    expected_subj_fig_dirs = [report_path.parent / f'sub-{subject}' / 'figures']
+                for expected_subj_idx, expected_subj_fig_dir in enumerate(expected_subj_fig_dirs):
+                    if not expected_subj_fig_dir.exists():
+                        FileNotFoundError(f"path_to_figures was not specified and the subject figures dir for sub-{subject}"
+                                          " was not at the expected location: {expected_subj_fig_dir}. Please use "
+                                          " path_to_figures to specify the correct relative path from the group dir to the"
+                                          " subject figures directory.")
+                    # I don't like any of the relative path tools in python
+                    # To get the relative path I want I've got to start from a place on the common path of
+                    # expected_subj_fig_dir, which should be the fmriprep_output_path
+                    good_parts = list(expected_subj_fig_dir.relative_to(fmriprep_output_path).parts)
+                    # figure out how many levels down the subj_group_fig_dir is (should be 2, for fmriprep >= 21.0.0 and 3 otherwise).
+                    lvls_down = len(subj_group_fig_dirs[expected_subj_idx].relative_to(fmriprep_output_path).parts) - 1
+                    # assemble the path parts into a list
+                    path_parts = (['..'] * lvls_down + good_parts)
+                    # join them with os.path.join
+                    orig_fig_dirs.append(Path(os.path.join(*path_parts)))
+
+                    if subj_group_fig_dirs[expected_subj_idx].is_symlink() or \
+                       subj_group_fig_dirs[expected_subj_idx].exists():
+                        raise ValueError(
+                            f"{subj_group_fig_dirs[expected_subj_fig_dirs]} exists and would be overwritten. "
+                            f"Rename or delete the existing group directory before running fmriprepgr.")
+
             else:
-                orig_fig_dir = path_to_figures.format(subject=subject)
-                if not (subj_group_dir / orig_fig_dir).exists():
-                    raise ValueError(f"path_to_figures is not correct. Based on {path_to_figures}, "
-                                     f"{subj_group_fig_dir / orig_fig_dir} should exist, but it doesn't.")
-            if subj_group_fig_dir.is_symlink() or subj_group_fig_dir.exists():
-                raise ValueError(f"{subj_group_fig_dir} exists and would be overwritten. Rename or delete the existing "
-                                 f"group directory before running fmriprepgr.")
-            if image_changes:
-                copytree(subj_group_dir / orig_fig_dir, subj_group_fig_dir)
-            else:
-                subj_group_fig_dir.symlink_to(orig_fig_dir, target_is_directory=True)
+                orig_fig_dirs = [path_to_figures.format(subject=subject)]
+                for orig_fig_idx, orig_fig_dir in enumerate(orig_fig_dirs):
+                    if not (subj_group_dir / orig_fig_dir).exists():
+                        raise ValueError(f"path_to_figures is not correct. Based on {path_to_figures}, "
+                                         f"{subj_group_fig_dirs[orig_fig_idx] / orig_fig_dir} should exist, but it doesn't.")
+            for orig_fig_idx, orig_fig_dir in enumerate(orig_fig_dirs):
+
+                if image_changes:
+                    copytree(subj_group_dir[orig_fig_idx] / orig_fig_dir, subj_group_fig_dirs[orig_fig_idx])
+                else:
+                    subj_group_fig_dirs[orig_fig_idx].symlink_to(orig_fig_dir, target_is_directory=True)
 
     reports = pd.concat(reports).reset_index(drop=True)
 
