@@ -86,6 +86,18 @@ def parse_report(report_path):
         if re_match:
             fmriprep_version = re_match[0].strip('fMRIPrep version: ')
 
+    # Check that the fmriprep version on the html report is the same as the dataset_description.
+    #fmriprep_root = report_path.parent
+    #dataset_description = fmriprep_root / 'dataset_description.json'
+    #if dataset_description.exists():
+    #    with open(dataset_description) as handle:
+    #        description = json.load(handle)
+    #        description_fmriprep = description['GeneratedBy'][0]['Version']
+    #try:
+    #    description_fmriprep == fmriprep_version
+    #except ValueError:
+    #    print('The versions of fmriprep on the dataset_decription.json and the html report do not match. Check your fmriprep run.')
+
     return report_elements, fmriprep_version
 
 
@@ -330,6 +342,7 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
 
                 else:
                     expected_subj_fig_dirs = [report_path.parent / f'sub-{subject}' / 'figures']
+                    subj_group_fig_dirs = [subj_group_dir / 'figures']
                 for expected_subj_idx, expected_subj_fig_dir in enumerate(expected_subj_fig_dirs):
                     if not expected_subj_fig_dir.exists():
                         FileNotFoundError(f"path_to_figures was not specified and the subject figures dir for sub-{subject}"
@@ -350,7 +363,7 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
                     if subj_group_fig_dirs[expected_subj_idx].is_symlink() or \
                        subj_group_fig_dirs[expected_subj_idx].exists():
                         raise ValueError(
-                            f"{subj_group_fig_dirs[expected_subj_fig_dirs]} exists and would be overwritten. "
+                            f"{subj_group_fig_dirs[expected_subj_idx]} exists and would be overwritten. "
                             f"Rename or delete the existing group directory before running fmriprepgr.")
 
             else:
@@ -362,7 +375,7 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
             for orig_fig_idx, orig_fig_dir in enumerate(orig_fig_dirs):
 
                 if image_changes:
-                    copytree(subj_group_dir[orig_fig_idx] / orig_fig_dir, subj_group_fig_dirs[orig_fig_idx])
+                    copytree(subj_group_fig_dirs[orig_fig_idx].parent / orig_fig_dir, subj_group_fig_dirs[orig_fig_idx])
                 else:
                     subj_group_fig_dirs[orig_fig_idx].symlink_to(orig_fig_dir, target_is_directory=True)
 
@@ -377,7 +390,10 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
         if image_changes:
             if (report_type in flip_images) or (report_type in drop_foreground) or (report_type in drop_background):
                 for ix, row in rtdf.iterrows():
-                    subj_group_dir = group_dir / f'sub-{row.subject}' / 'figures'
+                    if row['session']:
+                        subj_group_dir = group_dir / f'sub-{row.subject}' / f'ses-{row.session}' / 'figures'
+                    else:
+                        subj_group_dir = group_dir / f'sub-{row.subject}' / 'figures'
                     image_path = subj_group_dir / row.filename
                     if (not image_path.exists()):
                         raise FileNotFoundError(f"Something's gone wrong, {image_path} doesn't exist, but should.")
