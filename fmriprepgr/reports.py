@@ -390,8 +390,11 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
         if image_changes:
             if (report_type in flip_images) or (report_type in drop_foreground) or (report_type in drop_background):
                 for ix, row in rtdf.iterrows():
-                    if row['session']:
-                        subj_group_dir = group_dir / f'sub-{row.subject}' / f'ses-{row.session}' / 'figures'
+                    if fmriprep_version < '21.0.0':
+                        if row['session']:
+                            subj_group_dir = group_dir / f'sub-{row.subject}' / f'ses-{row.session}' / 'figures'
+                        else:
+                            subj_group_dir = group_dir / f'sub-{row.subject}' / 'figures'
                     else:
                         subj_group_dir = group_dir / f'sub-{row.subject}' / 'figures'
                     image_path = subj_group_dir / row.filename
