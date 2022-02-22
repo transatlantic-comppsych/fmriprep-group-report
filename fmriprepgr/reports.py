@@ -308,7 +308,13 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
     }
     (group_dir / 'dataset_description.json').write_text(json.dumps(dataset_description, indent=2))
     # parse all the subject reports
-    report_paths = sorted(fmriprep_output_path.glob('**/sub-*.html'))
+    all_htmls_paths = sorted(fmriprep_output_path.glob('**/sub-*.html'))
+    # Older versions of fmriprep (e.g., 20.2.2) have multiple sub-*.html. So, we want to the select only the sub-xx.html
+    # file without having to hardcode the fmriprep directory structure and subject ID.
+    report_paths = []
+    for html in all_htmls_paths:
+        if layout.parse_file_entities(html)['suffix'] == layout.parse_file_entities(html)['subject']:
+            report_paths.append(html)
     reports = []
     for report_idx, report_path in enumerate(report_paths):
         if not 'figures' in report_path.parts:
@@ -322,8 +328,10 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
 
             orig_fig_dirs = []
             if path_to_figures is None:
-                # check fmriprep version
-                if fmriprep_version < '21.0.0':
+                # check the fmriprep version and if there are multiple sessions. If only one session is availiable, the behavior
+                # is similar to fmriprep_version > 21.0.0
+                if (fmriprep_version < '21.0.0') and ('session' in reports[report_idx]):
+
                     sessions = reports[report_idx]['session'].unique()
                     # drop the nan session
                     sessions = [session for session in sessions if str(session) != 'nan']
@@ -335,7 +343,6 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
                         group_session_dir.mkdir(exist_ok=True)
                     # append 'figures' folders as the consolidated report expect all figures to be inside a figures folder
                     subj_group_fig_dirs = [group_session_dir / 'figures' for group_session_dir in group_session_dirs]
-
                     # append the figures folder
                     expected_subj_fig_dirs.append(report_path.parent / f'sub-{subject}' / 'figures')
                     subj_group_fig_dirs.append(subj_group_dir / 'figures')
