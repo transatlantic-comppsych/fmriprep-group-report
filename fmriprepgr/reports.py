@@ -315,6 +315,9 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
     for html in all_htmls_paths:
         if layout.parse_file_entities(html)['suffix'] == layout.parse_file_entities(html)['subject']:
             report_paths.append(html)
+    if not report_paths:
+        FileNotFoundError("No sub-{participant_ID}.html file was found. Please check if there are any sub-{participant_ID}.html"
+                          "on the provided fmriprep output directory.")
     reports = []
     for report_idx, report_path in enumerate(report_paths):
         if not 'figures' in report_path.parts:
@@ -328,6 +331,7 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
 
             orig_fig_dirs = []
             if path_to_figures is None:
+
                 # check the fmriprep version and if there are multiple sessions. If only one session is availiable, the behavior
                 # is similar to fmriprep_version > 21.0.0
                 if (fmriprep_version < '21.0.0') and ('session' in reports[report_idx]):
@@ -379,8 +383,8 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
                     if not (subj_group_dir / orig_fig_dir).exists():
                         raise ValueError(f"path_to_figures is not correct. Based on {path_to_figures}, "
                                          f"{subj_group_fig_dirs[orig_fig_idx] / orig_fig_dir} should exist, but it doesn't.")
-            for orig_fig_idx, orig_fig_dir in enumerate(orig_fig_dirs):
 
+            for orig_fig_idx, orig_fig_dir in enumerate(orig_fig_dirs):
                 if image_changes:
                     copytree(subj_group_fig_dirs[orig_fig_idx].parent / orig_fig_dir, subj_group_fig_dirs[orig_fig_idx])
                 else:
