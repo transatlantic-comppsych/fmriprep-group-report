@@ -87,16 +87,16 @@ def parse_report(report_path):
             fmriprep_version = re_match[0].strip('fMRIPrep version: ')
 
     # Check that the fmriprep version on the html report is the same as the dataset_description.
-    #fmriprep_root = report_path.parent
-    #dataset_description = fmriprep_root / 'dataset_description.json'
-    #if dataset_description.exists():
-    #    with open(dataset_description) as handle:
-    #        description = json.load(handle)
-    #        description_fmriprep = description['GeneratedBy'][0]['Version']
-    #try:
-    #    description_fmriprep == fmriprep_version
-    #except ValueError:
-    #    print('The versions of fmriprep on the dataset_decription.json and the html report do not match. Check your fmriprep run.')
+    fmriprep_root = report_path.parent
+    dataset_description = fmriprep_root / 'dataset_description.json'
+    if dataset_description.exists():
+        with open(dataset_description) as handle:
+            description = json.load(handle)
+            description_fmriprep = description['GeneratedBy'][0]['Version']
+    try:
+        description_fmriprep == fmriprep_version
+    except ValueError:
+        print('The versions of fmriprep on the dataset_decription.json and the html report do not match. Check your fmriprep run.')
 
     return report_elements, fmriprep_version
 
