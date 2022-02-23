@@ -199,7 +199,9 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
      only be modified in a single way.
     """
     fmriprep_output_path = Path(fmriprep_output_path)
-    # Assuming this is what the fmriprep directory looks like before running this
+
+    # Assuming this is what the fmriprep directory (for fmriprep versions > 21.0.0) looks like before running
+    # fmriprep group report
     """
     fmriprep
         ├── dataset_description.json
@@ -258,6 +260,86 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
         │       └── figures -> ../../sub-22293/figures
         └── ...
     """
+
+    # One of the changes of fmriprep 21.0.0 compared to the previous versions is that it now consolidates the figures
+    # output at the subject level. So all figures are located in a single figure folder, this is not true for the
+    # previous fmriprep version. Therefore, for older versions of fmriprep (< 21.0.0) the fmriprep directory should
+    # look like this
+    """
+    fmriprep
+    ├── dataset_description.json
+    ├── desc-aparcaseg_dseg.tsv
+    ├── desc-aseg_dseg.tsv
+    ├── logs
+    │    └── ...
+    ├── sub-20900
+    │    └── anat
+    │         └── ...
+    │    └── figures
+    │         ├── sub-20900_acq-mprage_rec-prenorm_run-1_desc-reconall_T1w.svg
+    │         └── ...
+    │    └── ses-v1
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    │    └── ses-v2
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    ├── sub-20900.html
+    ├── sub-22293
+    │    └── anat
+    │         └── ...
+    │     └── figures
+    │         ├── sub-22293_acq-mprage_rec-prenorm_run-1_desc-reconall_T1w.svg
+    │         └── ...
+    │    └── ses-v1
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    │    └── ses-v2
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    ├── sub-22293.html
+    └── ...
+    """
+    # The new group directory created will look like this
+    """
+    fmriprep
+        ├── group
+        │   ├── consolidated_dseg_000.html
+        │   ├── consolidated_MNI152NLin2009cAsym_000.html
+        │   ├── consolidated_MNI152NLin6Asym_000.html
+        │   ├── consolidated_pepolar_000.html
+        │   ├── consolidated_reconall_000.html
+        │   ├── sub-20900
+        │   │   └── figures -> ../../sub-20900/figures
+        │   │   └── ses-v1
+        │   │   │    └── figures -> ../../sub-20900/ses-v1/figures
+        │   │   └── ses-v2
+        │   │       └── figures -> ../../sub-20900/ses-v2/figures
+        │   └── sub-22293
+        │   │   └── figures -> ../../sub-22293/figures
+        │   │   └── ses-v1
+        │   │   │    └── figures -> ../../sub-22293/ses-v1/figures
+        │   │   └── ses-v2
+        │   │       └── figures -> ../../sub-22293/ses-v2/figures
+        └── ...
+    """
+
     # check to see if we're symlinking or copying
     if len(flip_images) == 0 and len(drop_background) == 0 and len(drop_foreground) == 0:
         image_changes = False
@@ -332,8 +414,8 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
             orig_fig_dirs = []
             if path_to_figures is None:
 
-                # check the fmriprep version and if there are multiple sessions. If only one session is availiable, the behavior
-                # is similar to fmriprep_version > 21.0.0
+                # check the fmriprep version and if there are multiple sessions. If only one session is available,
+                # the behavior is similar to fmriprep_version > 21.0.0
                 if (fmriprep_version < '21.0.0') and ('session' in reports[report_idx]):
 
                     sessions = reports[report_idx]['session'].unique()
@@ -364,7 +446,8 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
                     # To get the relative path I want I've got to start from a place on the common path of
                     # expected_subj_fig_dir, which should be the fmriprep_output_path
                     good_parts = list(expected_subj_fig_dir.relative_to(fmriprep_output_path).parts)
-                    # figure out how many levels down the subj_group_fig_dir is (should be 2, for fmriprep >= 21.0.0 and 3 otherwise).
+                    # figure out how many levels down the subj_group_fig_dir is (should be 2, for fmriprep >= 21.0.0
+                    # and 3 otherwise).
                     lvls_down = len(subj_group_fig_dirs[expected_subj_idx].relative_to(fmriprep_output_path).parts) - 1
                     # assemble the path parts into a list
                     path_parts = (['..'] * lvls_down + good_parts)
