@@ -1,0 +1,22 @@
+{
+  "Name": "fMRIPrep-Group-Report output",
+  "BIDSVersion": "1.1.1",
+  "DatasetType": "derivative",
+  "GeneratedBy": [
+    {
+      "Name": "fMRIPrep-Group-Report",
+      "CodeURL": "https://github.com/nimh-comppsych/fmriprep-group-report",
+      "Parameters": {
+        "fmriprep_output_path": "/tmp/pytest-of-jdafflon/pytest-26/test_fmriprepgrp_mod_20006_inp0/fmriprep-20.0.6",
+        "reports_per_page": 50,
+        "flip_images": [
+          " MNI152NLin6Asym"
+        ],
+        "drop_background": [
+          "pepolar"
+        ],
+        "drop_foreground": []
+      }
+    }
+  ]
+}
