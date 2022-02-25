@@ -1,12 +1,11 @@
 # FMRIPrep Group Report
 [![Run Python Tests](https://github.com/nimh-comppsych/fmriprep-group-report/actions/workflows/ci.yml/badge.svg)](https://github.com/nimh-comppsych/fmriprep-group-report/actions/workflows/ci.yml)  
-Fmriprep produces a bunch of subject level reports and each subject level report has many sub-reports. 
-I've found it's easier to review things if all of the sub-reports of a given type are consolidated into a single page. 
-Fmriprep produces a bunch of subject level reports ([like](https://nimh-comppsych.github.io/fmriprep-group-report/fmriprepgr/test/data/fmriprep/sub-20900.html) [this](https://nimh-comppsych.github.io/fmriprep-group-report//fmriprepgr/test/data/fmriprep/sub-22293.html)) and each subject level report has many sub-reports. 
+
+Fmriprep produces a bunch of subject level reports and each subject level report has many sub-reports and each subject level report has many sub-reports. 
 I've found it's easier to review things if all of the sub-reports of a given type are consolidated into a single page ([like](https://nimh-comppsych.github.io/fmriprep-group-report/fmriprepgr/test/data/fmriprep/group/consolidated_dseg_000.html) [this](https://nimh-comppsych.github.io/fmriprep-group-report//fmriprepgr/test/data/fmriprep/group/consolidated_reconall_000.html)). The consolidated pages also let you perform the qc serverlessly on each page and download a tsv of your ratings. 
 This package will make a set of consolidated reports from a fmriprep output directory. In principle, if the provided 
-fmriprep output directory follow any of the two path settings described on the [Paths](#paths) section below, the code should run for
-any fmriprep version. Note, that we tested the code on fmriprep versions 21.0.0, 20.2.3, 20.0.6. 
+fmriprep output directory follows any of the two path settings described on the [Paths](#paths) section below, the code should run for
+any fmriprep version. Note that code was tested with fmriprep versions 21.0.0, 20.2.3, 20.0.6. 
 
 ## How to install:
 `pip install fmriprep-group-report`  
@@ -37,7 +36,7 @@ Finally, for those of you with hundreds of images to review, if the image is fin
 ## Paths
 This code assumes that the provided fmriprep output directory follows a specific structure; it assumes that the html reports are at the same level as the subject results directory,
 and that the figures directory is at the top level with each subject level report directory as the location of the report.htmls to figure out the relative paths to the figures directory.
-Because in older fmriprep versions the figures output have been consolidated into a single figure folder, I will describe the two expected fmriprep directories that the code can handle. 
+It can also handles when every subject directory has a figure folder at the top level and one for each session (if there is more then one session). The tree for both cases is illustrated below. 
 
 ### Consolidated figures folder
 In this use case all figures are located inside a single figure folder under the subject's directory.
