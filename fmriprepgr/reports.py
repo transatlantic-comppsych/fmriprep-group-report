@@ -74,19 +74,7 @@ def parse_report(report_path):
         t1w_ind = report_elements.report_type.isnull() & report_elements.space.notnull()
         report_elements.loc[t1w_ind, 'report_type'] = report_elements.loc[t1w_ind, 'space']
 
-    # get fmriprep version from the fmriprep html report
-    li_text = []
-    for ultag in soup.find_all('div', {'id': 'About'}):
-        for litag in ultag.find_all('li'):
-            li_text.append(litag.text)
-
-    # Get only the numbers for the fmriprep version
-    for li in li_text:
-        re_match = re.findall(r'fMRIPrep version: .*', li)
-        if re_match:
-            fmriprep_version = re_match[0].strip('fMRIPrep version: ')
-
-    return report_elements, fmriprep_version
+    return report_elements
 
 
 def _unique_retrieval(element_list, elem_identifier, search_identifier):
@@ -185,7 +173,7 @@ def make_report(fmriprep_output_path, reports_per_page=50,
     """
     fmriprep_output_path = Path(fmriprep_output_path)
 
-    # Assuming this is what the fmriprep directory (for fmriprep versions > 21.0.0) looks like before running
+    # Assuming this is what the fmriprep directory looks like before running
     # fmriprep group report
     """
     fmriprep
@@ -373,7 +361,7 @@ def make_report(fmriprep_output_path, reports_per_page=50,
     (group_dir / 'dataset_description.json').write_text(json.dumps(dataset_description, indent=2))
     # parse all the subject reports
     all_htmls_paths = sorted(fmriprep_output_path.glob('**/sub-*.html'))
-    # Older versions of fmriprep (e.g., 20.2.2) have multiple sub-*.html. So, we want to the select only the sub-xx.html
+    # If there are multiple sub-*.html inside the figures subfolder. So, we want to the select only the sub-xx.html
     # file without having to hardcode the fmriprep directory structure and subject ID.
     report_paths = []
     for html in all_htmls_paths:
@@ -385,7 +373,7 @@ def make_report(fmriprep_output_path, reports_per_page=50,
     reports = []
     for report_idx, report_path in enumerate(report_paths):
         if not 'figures' in report_path.parts:
-            report, fmriprep_version = parse_report(report_path)
+            report = parse_report(report_path)
             reports.append(report)
 
             # symlink figures directory into place

@@ -61,7 +61,7 @@ def test_parse_report():
     None
     """
     test_data_dir = Path(__file__).parent.resolve() / 'data'
-    output, _ = parse_report(test_data_dir / 'fmriprep/sub-20900.html')
+    output = parse_report(test_data_dir / 'fmriprep/sub-20900.html')
     expected_output = pd.read_csv(test_data_dir / 'sub-20900test.csv')
     expected_output['subject'] = expected_output.subject.astype(str)
     assert expected_output.equals(output)
