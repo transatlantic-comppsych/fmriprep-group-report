@@ -175,9 +175,6 @@ def _make_report_snippet(row):
 @click.command()
 @click.option('--reports_per_page', default=50,
               help='How many figures per page. If None, then put them all on a single page.')
-@click.option('--path_to_figures', default=None,
-              help="Relative path from group/sub-{subject} to subject's figure directory."
-                   " If None, infer from report location.")
 @click.option('--flip_images', '-f', default=(), multiple=True,
               help="The names of any report subsections where you want to flip which image is shown when mousing over."
                    " Can be passed multiple times to specify multiple subsections.")
@@ -190,7 +187,7 @@ def _make_report_snippet(row):
                    " and just see the image that's shown before mousing over. Can be passed multiple times to specify"
                    " multiple subsections.")
 @click.argument('fmriprep_output_path')
-def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
+def make_report(fmriprep_output_path, reports_per_page=50,
                 flip_images=(), drop_background=(), drop_foreground=()):
     """
     Make a consolidated report from an fMRIPrep output directory. Optionally, you can also tweak the images in the
@@ -368,7 +365,6 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
     # write parameters
     params = {'fmriprep_output_path': fmriprep_output_path.as_posix(),
               'reports_per_page': reports_per_page,
-              'path_to_figures': path_to_figures,
               'flip_images': list(flip_images),
               'drop_background': list(drop_background),
               'drop_foreground': list(drop_foreground)}
