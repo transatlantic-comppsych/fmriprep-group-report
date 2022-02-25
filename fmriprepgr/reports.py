@@ -86,18 +86,6 @@ def parse_report(report_path):
         if re_match:
             fmriprep_version = re_match[0].strip('fMRIPrep version: ')
 
-    # Check that the fmriprep version on the html report is the same as the dataset_description.
-    fmriprep_root = report_path.parent
-    dataset_description = fmriprep_root / 'dataset_description.json'
-    if dataset_description.exists():
-        with open(dataset_description) as handle:
-            description = json.load(handle)
-            description_fmriprep = description['GeneratedBy'][0]['Version']
-    try:
-        description_fmriprep == fmriprep_version
-    except ValueError:
-        print('The versions of fmriprep on the dataset_decription.json and the html report do not match. Check your fmriprep run.')
-
     return report_elements, fmriprep_version
 
 
@@ -415,12 +403,11 @@ def make_report(fmriprep_output_path, reports_per_page=50,
                 sessions = [session for session in sessions if str(session) != 'nan']
                 expected_subj_fig_dirs = [report_path.parent / f'sub-{subject}' / f'ses-{session}' / 'figures'
                                           for session in sessions]
-                # Create session folders
+                # Create session folders, if they exist on the original fmriprep output directory
                 group_session_dirs = [subj_group_dir / f'ses-{session}' for session in sessions]
-                for group_session_dir in group_session_dirs:
-                    group_session_dir.mkdir(exist_ok=True)
                 # append 'figures' folders as the consolidated report expect all figures to be inside a figures folder
                 subj_group_fig_dirs = [group_session_dir / 'figures' for group_session_dir in group_session_dirs]
+
                 # append the top level figures folder
                 expected_subj_fig_dirs.append(report_path.parent / f'sub-{subject}' / 'figures')
                 subj_group_fig_dirs.append(subj_group_dir / 'figures')
@@ -431,6 +418,16 @@ def make_report(fmriprep_output_path, reports_per_page=50,
             for expected_subj_idx, expected_subj_fig_dir in enumerate(expected_subj_fig_dirs):
                 # Only find the relative path for figure folders that exist
                 if expected_subj_fig_dir.exists():
+                    # Check if fmriprep-group-report figure directory already exists or is symlink
+                    if subj_group_fig_dirs[expected_subj_idx].is_symlink() or \
+                       subj_group_fig_dirs[expected_subj_idx].exists():
+                        raise ValueError(
+                            f"{subj_group_fig_dirs[expected_subj_idx]} exists and would be overwritten. "
+                            f"Rename or delete the existing group directory before running fmriprepgr.")
+
+                    # only create session folders
+                    if ('session' in reports[report_idx]) and expected_subj_fig_dir.parents[0].name.startswith('ses-'):
+                        group_session_dirs[expected_subj_idx].mkdir(exist_ok=True)
                     # I don't like any of the relative path tools in python
                     # To get the relative path I want I've got to start from a place on the common path of
                     # expected_subj_fig_dir, which should be the fmriprep_output_path
@@ -449,12 +446,6 @@ def make_report(fmriprep_output_path, reports_per_page=50,
                     path['subj_group_fig_dir'] = subj_group_fig_dirs[expected_subj_idx]
                     paths.append(path)
 
-                    # Check if fmriprep-group-report figure directory already exists or is symlink
-                    if path['subj_group_fig_dir'].is_symlink() or \
-                       path['subj_group_fig_dir'].exists():
-                        raise ValueError(
-                            f"{path['subj_group_fig_dir']} exists and would be overwritten. "
-                            f"Rename or delete the existing group directory before running fmriprepgr.")
 
             # if paths is empty, if it is empty no figures folder was found. Return an error and ask user to
             # check the specified path
@@ -467,7 +458,7 @@ def make_report(fmriprep_output_path, reports_per_page=50,
 
             for path in paths:
                 if image_changes:
-                    copytree(path['subj_fmriprep_fig_dir'] / path['orig_fig_dir'], path['subj_group_fig_dir'])
+                    copytree(path['subj_group_fig_dir'].parent / path['orig_fig_dir'], path['subj_group_fig_dir'])
                 else:
                     path['subj_group_fig_dir'].symlink_to(path['orig_fig_dir'], target_is_directory=True)
 
@@ -482,11 +473,9 @@ def make_report(fmriprep_output_path, reports_per_page=50,
         if image_changes:
             if (report_type in flip_images) or (report_type in drop_foreground) or (report_type in drop_background):
                 for ix, row in rtdf.iterrows():
-                    if fmriprep_version < '21.0.0':
-                        if row['session']:
-                            subj_group_dir = group_dir / f'sub-{row.subject}' / f'ses-{row.session}' / 'figures'
-                        else:
-                            subj_group_dir = group_dir / f'sub-{row.subject}' / 'figures'
+                    # append session folder, if necessary
+                    if Path(rtdf.iloc[ix]['path']).parts[1].startswith('ses-'):
+                        subj_group_dir = group_dir / f'sub-{row.subject}' / f'ses-{row.session}' / 'figures'
                     else:
                         subj_group_dir = group_dir / f'sub-{row.subject}' / 'figures'
                     image_path = subj_group_dir / row.filename
