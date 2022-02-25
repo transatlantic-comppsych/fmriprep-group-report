@@ -4,7 +4,9 @@ Fmriprep produces a bunch of subject level reports and each subject level report
 I've found it's easier to review things if all of the sub-reports of a given type are consolidated into a single page. 
 Fmriprep produces a bunch of subject level reports ([like](https://nimh-comppsych.github.io/fmriprep-group-report/fmriprepgr/test/data/fmriprep/sub-20900.html) [this](https://nimh-comppsych.github.io/fmriprep-group-report//fmriprepgr/test/data/fmriprep/sub-22293.html)) and each subject level report has many sub-reports. 
 I've found it's easier to review things if all of the sub-reports of a given type are consolidated into a single page ([like](https://nimh-comppsych.github.io/fmriprep-group-report/fmriprepgr/test/data/fmriprep/group/consolidated_dseg_000.html) [this](https://nimh-comppsych.github.io/fmriprep-group-report//fmriprepgr/test/data/fmriprep/group/consolidated_reconall_000.html)). The consolidated pages also let you perform the qc serverlessly on each page and download a tsv of your ratings. 
-This package will make a set of consolidated reports from an fmriprep (v21.0.0 or later) output directory.
+This package will make a set of consolidated reports from a fmriprep output directory. In principle, if the provided 
+fmriprep output directory follow any of the two path settings described on the [Paths](#paths) section below, the code should run for
+any fmriprep version. Note, that we tested the code on fmriprep versions 21.0.0, 20.2.3, 20.0.6. 
 
 ## How to install:
 `pip install fmriprep-group-report`  
@@ -15,8 +17,7 @@ This package will make a set of consolidated reports from an fmriprep (v21.0.0 o
 ## Options: 
 --reports_per_page: How many sub-reports do you want on each page? Default is 50. 
 Set to None if you want all reports on a single page  
---path_to_figures: If your fmriprep directories are laid out in a non-standard way, you'll need to use this to specify
-the correct relative path. See paths discussion below.
+
 ### Image modification options
 Some of the SVGs produced by fmriprep aren't setup in a way that facilitates bulk review. Here are some options to manipulate the SVGs. Note that if you use any of these options, all of the report SVGs will be copied instead of symlinked. For all of these options, pass it multiple times if there are multiple sub-reports with SVGs you want to modify.  
 --flip_images:  Flip the background and foreground on SVGs that change when you mouse over. For example the registrations to standard space have the standard space image till you mouse over them. If you want to be able to quickly spot weirdness, it's easier to have the subject images appear first and the standard space images appear on mouse over. `--flip_images MNI152NLin6Asym` will flip the `MNI152NLin6Asym` registrations. If there's more than one you want to change, pass it twice: `--flip_images MNI152NLin6Asym --flip_images MNI152NLin2009cAsym`.  
@@ -34,10 +35,12 @@ Each image has an index (idx-0 in this case), indicating which image on the page
 Finally, for those of you with hundreds of images to review, if the image is fine, you can just scroll past it, and it will be automatically marked as good.
 
 ## Paths
-You probably won't have to worry about this. Try it once and see if it's worked, if you get an error mentioning 
-path_to_figures, then the solution might be here.
-I assume that the html reports are at the same level as the subject results directory,
-and that the figures directory are at the top level with each subject level report directory. like so:
+This code assumes that the provided fmriprep output directory follows a specific structure; it assumes that the html reports are at the same level as the subject results directory,
+and that the figures directory is at the top level with each subject level report directory as the location of the report.htmls to figure out the relative paths to the figures directory.
+Because in older fmriprep versions the figures output have been consolidated into a single figure folder, I will describe the two expected fmriprep directories that the code can handle. 
+
+### Consolidated figures folder
+In this use case all figures are located inside a single figure folder under the subject's directory.
 ```commandline
     fmriprep
         ├── dataset_description.json
@@ -97,38 +100,62 @@ on disk, but can be rsynced relatively easily to another location with `-L`. Thi
         │       └── figures -> ../../sub-22293/figures
         └── ...
 ```
-I use the location of the report.htmls to figure out the relative paths to the figures directory. 
-If figures aren't located `./sub-{subject}/figures` relative to the directory that contains `sub-{subject}.html`, 
-then you'll need to provide the format for the figure symlinks in the path_to_figures option. For example if your directory
-looks like this:
+
+### Different sessions have separate figure folders
+Older versions of fmriprep (e.g., 20.0.6) used to have separate figure folders for the different sessions
+as following:
 ```commandline
     fmriprep
-        ├── dataset_description.json
-        ├── desc-aparcaseg_dseg.tsv
-        ├── desc-aseg_dseg.tsv
-        ├── logs
-        │    └── ...
-        ├── fmriprep
-        │    └── sub-20900
-        │       └── anat
-        │           └── ...
-        │       └── figures
-        │            ├── sub-20900_acq-mprage_rec-prenorm_run-1_desc-reconall_T1w.svg
-        │            └── ...
-        │       └── ses-v1
-        │             └── anat
-        │                  └── ...
-        │             └── func
-        │                   └── ...
-        │       └── ses-v2
-        │           └── anat
-        │              └── ...
-        │         └── func
-        │              └── ...
-        ├── sub-20900.html
-        └── ...
+    ├── dataset_description.json
+    ├── desc-aparcaseg_dseg.tsv
+    ├── desc-aseg_dseg.tsv
+    ├── logs
+    │    └── ...
+    ├── sub-20900
+    │    └── anat
+    │         └── ...
+    │    └── figures
+    │         ├── sub-20900_acq-mprage_rec-prenorm_run-1_desc-reconall_T1w.svg
+    │         └── ...
+    │    └── ses-v1
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    │    └── ses-v2
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    ├── sub-20900.html
+    ├── sub-22293
+    │    └── anat
+    │         └── ...
+    │     └── figures
+    │         ├── sub-22293_acq-mprage_rec-prenorm_run-1_desc-reconall_T1w.svg
+    │         └── ...
+    │    └── ses-v1
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    │    └── ses-v2
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    ├── sub-22293.html
+    └── ...
 ```
-Then you'll need the output to look like this:
+When there are multiple figure directories, the code will copy/symlink them separately. The new group directory created will look like this
 ```commandline
     fmriprep
         ├── group
@@ -138,9 +165,16 @@ Then you'll need the output to look like this:
         │   ├── consolidated_pepolar_000.html
         │   ├── consolidated_reconall_000.html
         │   ├── sub-20900
-        │   │   └── figures -> ../../fmriprep/sub-20900/figures
+        │   │   └── figures -> ../../sub-20900/figures
+        │   │   └── ses-v1
+        │   │   │    └── figures -> ../../sub-20900/ses-v1/figures
+        │   │   └── ses-v2
+        │   │       └── figures -> ../../sub-20900/ses-v2/figures
         │   └── sub-22293
-        │       └── figures -> ../../fmriprep/sub-22293/figures
+        │   │   └── figures -> ../../sub-22293/figures
+        │   │   └── ses-v1
+        │   │   │    └── figures -> ../../sub-22293/ses-v1/figures
+        │   │   └── ses-v2
+        │   │       └── figures -> ../../sub-22293/ses-v2/figures
         └── ...
 ```
-So you'll need to set `path_to_figures` to `'../../fmriprep/sub-{subject}/figures''`. 
