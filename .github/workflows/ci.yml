@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - feature/older-fmriprep
   pull_request:
     types:
       - edited
