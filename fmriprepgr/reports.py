@@ -1,5 +1,6 @@
 import os
 from shutil import copytree
+import re
 import json
 from pathlib import Path
 import pandas as pd
@@ -72,6 +73,7 @@ def parse_report(report_path):
     if 'space' in report_elements.columns:
         t1w_ind = report_elements.report_type.isnull() & report_elements.space.notnull()
         report_elements.loc[t1w_ind, 'report_type'] = report_elements.loc[t1w_ind, 'space']
+
     return report_elements
 
 
@@ -149,9 +151,6 @@ def _make_report_snippet(row):
 @click.command()
 @click.option('--reports_per_page', default=50,
               help='How many figures per page. If None, then put them all on a single page.')
-@click.option('--path_to_figures', default=None,
-              help="Relative path from group/sub-{subject} to subject's figure directory."
-                   " If None, infer from report location.")
 @click.option('--flip_images', '-f', default=(), multiple=True,
               help="The names of any report subsections where you want to flip which image is shown when mousing over."
                    " Can be passed multiple times to specify multiple subsections.")
@@ -164,7 +163,7 @@ def _make_report_snippet(row):
                    " and just see the image that's shown before mousing over. Can be passed multiple times to specify"
                    " multiple subsections.")
 @click.argument('fmriprep_output_path')
-def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
+def make_report(fmriprep_output_path, reports_per_page=50,
                 flip_images=(), drop_background=(), drop_foreground=()):
     """
     Make a consolidated report from an fMRIPrep output directory. Optionally, you can also tweak the images in the
@@ -173,7 +172,9 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
      only be modified in a single way.
     """
     fmriprep_output_path = Path(fmriprep_output_path)
-    # Assuming this is what the fmriprep directory looks like before running this
+
+    # Assuming this is what the fmriprep directory looks like before running
+    # fmriprep group report
     """
     fmriprep
         ├── dataset_description.json
@@ -232,6 +233,84 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
         │       └── figures -> ../../sub-22293/figures
         └── ...
     """
+    # Older versions of fmriprep(e.g., 20.0.6) used to have separate figure folders for the different sessions
+    # as following:
+
+    """
+    fmriprep
+    ├── dataset_description.json
+    ├── desc-aparcaseg_dseg.tsv
+    ├── desc-aseg_dseg.tsv
+    ├── logs
+    │    └── ...
+    ├── sub-20900
+    │    └── anat
+    │         └── ...
+    │    └── figures
+    │         ├── sub-20900_acq-mprage_rec-prenorm_run-1_desc-reconall_T1w.svg
+    │         └── ...
+    │    └── ses-v1
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    │    └── ses-v2
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    ├── sub-20900.html
+    ├── sub-22293
+    │    └── anat
+    │         └── ...
+    │     └── figures
+    │         ├── sub-22293_acq-mprage_rec-prenorm_run-1_desc-reconall_T1w.svg
+    │         └── ...
+    │    └── ses-v1
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    │    └── ses-v2
+    │         └── anat
+    │              └── ...
+    │         └── figures
+    │              └── ...
+    │         └── func
+    │              └── ...
+    ├── sub-22293.html
+    └── ...
+    """
+    # The new group directory created will look like this
+    """
+    fmriprep
+        ├── group
+        │   ├── consolidated_dseg_000.html
+        │   ├── consolidated_MNI152NLin2009cAsym_000.html
+        │   ├── consolidated_MNI152NLin6Asym_000.html
+        │   ├── consolidated_pepolar_000.html
+        │   ├── consolidated_reconall_000.html
+        │   ├── sub-20900
+        │   │   └── figures -> ../../sub-20900/figures
+        │   │   └── ses-v1
+        │   │   │    └── figures -> ../../sub-20900/ses-v1/figures
+        │   │   └── ses-v2
+        │   │       └── figures -> ../../sub-20900/ses-v2/figures
+        │   └── sub-22293
+        │   │   └── figures -> ../../sub-22293/figures
+        │   │   └── ses-v1
+        │   │   │    └── figures -> ../../sub-22293/ses-v1/figures
+        │   │   └── ses-v2
+        │   │       └── figures -> ../../sub-22293/ses-v2/figures
+        └── ...
+    """
+
     # check to see if we're symlinking or copying
     if len(flip_images) == 0 and len(drop_background) == 0 and len(drop_foreground) == 0:
         image_changes = False
@@ -260,7 +339,6 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
     # write parameters
     params = {'fmriprep_output_path': fmriprep_output_path.as_posix(),
               'reports_per_page': reports_per_page,
-              'path_to_figures': path_to_figures,
               'flip_images': list(flip_images),
               'drop_background': list(drop_background),
               'drop_foreground': list(drop_foreground)}
@@ -282,48 +360,95 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
     }
     (group_dir / 'dataset_description.json').write_text(json.dumps(dataset_description, indent=2))
     # parse all the subject reports
-    report_paths = sorted(fmriprep_output_path.glob('**/sub-*.html'))
+    all_htmls_paths = sorted(fmriprep_output_path.glob('**/sub-*.html'))
+    # If there are multiple sub-*.html inside the figures subfolder. So, we want to the select only the sub-xx.html
+    # file without having to hardcode the fmriprep directory structure and subject ID.
+    report_paths = []
+    for html in all_htmls_paths:
+        if layout.parse_file_entities(html)['suffix'] == layout.parse_file_entities(html)['subject']:
+            report_paths.append(html)
+    if not report_paths:
+        FileNotFoundError("No sub-{participant_ID}.html file was found. Please check if there are any sub-{participant_ID}.html"
+                          "on the provided fmriprep output directory.")
     reports = []
-    for report_path in report_paths:
+    for report_idx, report_path in enumerate(report_paths):
         if not 'figures' in report_path.parts:
-            reports.append(parse_report(report_path))
+            report = parse_report(report_path)
+            reports.append(report)
 
             # symlink figures directory into place
             subject = layout.parse_file_entities(report_path)['subject']
             subj_group_dir = group_dir / f'sub-{subject}'
             subj_group_dir.mkdir(exist_ok=True)
-            subj_group_fig_dir = subj_group_dir / 'figures'
 
-            if path_to_figures is None:
-                expected_subj_fig_dir = report_path.parent / f'sub-{subject}' / 'figures'
-                if not expected_subj_fig_dir.exists():
-                    FileNotFoundError(f"path_to_figures was not specified and the subject figures dir for sub-{subject}"
-                                      " was not at the expected location: {expected_subj_fig_dir}. Please use "
-                                      " path_to_figures to specify the correct relative path from the group dir to the"
-                                      " subject figures directory.")
-                # I don't like any of the relative path tools in python
-                # To get the relative path I want I've got to start from a place on the common path of
-                # expected_subj_fig_dir, which should be the fmriprep_output_path
-                good_parts = list(expected_subj_fig_dir.relative_to(fmriprep_output_path).parts)
-                # figure out how many levels down the subj_group_fig_dir is (should be 2, but in case the above code
-                # changes)
-                lvls_down = len(subj_group_fig_dir.relative_to(fmriprep_output_path).parts) - 1
-                # assemble the path parts into a list
-                path_parts = (['..'] * lvls_down + good_parts)
-                # join them with os.path.join
-                orig_fig_dir = Path(os.path.join(*path_parts))
+            paths = []
+            # Depending which fmriprep version was used to preprocess the outputs might look different. Older versions of
+            # fmriprep had figure folder at the subject level and a figure folder inside the different sessions. The code
+            # below makes sure that only existing folders get copied, independent of the version used.
+            if 'session' in reports[report_idx]:
+                sessions = reports[report_idx]['session'].unique()
+                # drop the nan session
+                sessions = [session for session in sessions if str(session) != 'nan']
+                expected_subj_fig_dirs = [report_path.parent / f'sub-{subject}' / f'ses-{session}' / 'figures'
+                                          for session in sessions]
+                # Create session folders, if they exist on the original fmriprep output directory
+                group_session_dirs = [subj_group_dir / f'ses-{session}' for session in sessions]
+                # append 'figures' folders as the consolidated report expect all figures to be inside a figures folder
+                subj_group_fig_dirs = [group_session_dir / 'figures' for group_session_dir in group_session_dirs]
+
+                # append the top level figures folder
+                expected_subj_fig_dirs.append(report_path.parent / f'sub-{subject}' / 'figures')
+                subj_group_fig_dirs.append(subj_group_dir / 'figures')
+
             else:
-                orig_fig_dir = path_to_figures.format(subject=subject)
-                if not (subj_group_dir / orig_fig_dir).exists():
-                    raise ValueError(f"path_to_figures is not correct. Based on {path_to_figures}, "
-                                     f"{subj_group_fig_dir / orig_fig_dir} should exist, but it doesn't.")
-            if subj_group_fig_dir.is_symlink() or subj_group_fig_dir.exists():
-                raise ValueError(f"{subj_group_fig_dir} exists and would be overwritten. Rename or delete the existing "
-                                 f"group directory before running fmriprepgr.")
-            if image_changes:
-                copytree(subj_group_dir / orig_fig_dir, subj_group_fig_dir)
-            else:
-                subj_group_fig_dir.symlink_to(orig_fig_dir, target_is_directory=True)
+                expected_subj_fig_dirs = [report_path.parent / f'sub-{subject}' / 'figures']
+                subj_group_fig_dirs = [subj_group_dir / 'figures']
+            for expected_subj_idx, expected_subj_fig_dir in enumerate(expected_subj_fig_dirs):
+                # Only find the relative path for figure folders that exist
+                if expected_subj_fig_dir.exists():
+                    # Check if fmriprep-group-report figure directory already exists or is symlink
+                    if subj_group_fig_dirs[expected_subj_idx].is_symlink() or \
+                       subj_group_fig_dirs[expected_subj_idx].exists():
+                        raise ValueError(
+                            f"{subj_group_fig_dirs[expected_subj_idx]} exists and would be overwritten. "
+                            f"Rename or delete the existing group directory before running fmriprepgr.")
+
+                    # only create session folders
+                    if ('session' in reports[report_idx]) and expected_subj_fig_dir.parents[0].name.startswith('ses-'):
+                        group_session_dirs[expected_subj_idx].mkdir(exist_ok=True)
+                    # I don't like any of the relative path tools in python
+                    # To get the relative path I want I've got to start from a place on the common path of
+                    # expected_subj_fig_dir, which should be the fmriprep_output_path
+                    good_parts = list(expected_subj_fig_dir.relative_to(fmriprep_output_path).parts)
+                    # figure out how many levels down the subj_group_fig_dir is (should be 2, for fmriprep >= 21.0.0
+                    # and 3 otherwise).
+                    lvls_down = len(subj_group_fig_dirs[expected_subj_idx].relative_to(fmriprep_output_path).parts) - 1
+                    # assemble the path parts into a list
+                    path_parts = (['..'] * lvls_down + good_parts)
+
+                    # Save the relative and subject group path
+                    path = {}
+                    # join them with os.path.join
+                    path['orig_fig_dir'] = Path(os.path.join(*path_parts))
+                    path['subj_fmriprep_fig_dir'] = expected_subj_fig_dir
+                    path['subj_group_fig_dir'] = subj_group_fig_dirs[expected_subj_idx]
+                    paths.append(path)
+
+
+            # if paths is empty, if it is empty no figures folder was found. Return an error and ask user to
+            # check the specified path
+            if not paths:
+                raise FileNotFoundError(f"The subject figures dir for sub-{subject}"
+                                  f" was not at the expected location. Please use "
+                                  " make sure that the passed fmriprep output directory looks like the one "
+                                  " described layouts in the README and the documentation of this function. "
+                                  " A default fmriprep is expected by this script.")
+
+            for path in paths:
+                if image_changes:
+                    copytree(path['subj_group_fig_dir'].parent / path['orig_fig_dir'], path['subj_group_fig_dir'])
+                else:
+                    path['subj_group_fig_dir'].symlink_to(path['orig_fig_dir'], target_is_directory=True)
 
     reports = pd.concat(reports).reset_index(drop=True)
 
@@ -336,7 +461,11 @@ def make_report(fmriprep_output_path, reports_per_page=50, path_to_figures=None,
         if image_changes:
             if (report_type in flip_images) or (report_type in drop_foreground) or (report_type in drop_background):
                 for ix, row in rtdf.iterrows():
-                    subj_group_dir = group_dir / f'sub-{row.subject}' / 'figures'
+                    # append session folder, if necessary
+                    if Path(rtdf.iloc[ix]['path']).parts[1].startswith('ses-'):
+                        subj_group_dir = group_dir / f'sub-{row.subject}' / f'ses-{row.session}' / 'figures'
+                    else:
+                        subj_group_dir = group_dir / f'sub-{row.subject}' / 'figures'
                     image_path = subj_group_dir / row.filename
                     if (not image_path.exists()):
                         raise FileNotFoundError(f"Something's gone wrong, {image_path} doesn't exist, but should.")

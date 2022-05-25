@@ -140,7 +140,6 @@ def test_fmriprepgr_mod(tmp_path, script_runner):
     # get rid of the expected outputs
     rmtree(test_fmriprep_dir / 'group')
     ret = script_runner.run('fmriprepgr', '-f MNI152NLin6Asym', '--drop_background=pepolar', test_fmriprep_dir.as_posix())
-
     assert ret.success
     expected_out_dir = test_data_dir / 'group_mod'
     out_dir = test_fmriprep_dir / 'group'
@@ -158,5 +157,102 @@ def test_fmriprepgr_mod(tmp_path, script_runner):
     # test that links are valid
     out_links = sorted((out_dir / 'sub-20900' / 'figures').glob('*'))
     out_links += sorted((out_dir / 'sub-22293' / 'figures').glob('*'))
+    for ll in out_links:
+        assert ll.exists()
+
+# ------------------------------------------------------------------------------------------------------------
+# fmriprep v. 20.0.6 tests
+# ------------------------------------------------------------------------------------------------------------
+def test_fmriprepgr_v2006(tmp_path, script_runner):
+    test_out_dir = tmp_path
+    test_data_dir = Path(__file__).parent.resolve() / 'data/fmriprep-20.0.6'
+    test_fmriprep_dir = test_out_dir / 'fmriprep-20.0.6'
+    copytree(test_data_dir, test_fmriprep_dir)
+    # get rid of the expected outputs
+    rmtree(test_fmriprep_dir / 'group')
+    ret = script_runner.run('fmriprepgr', test_fmriprep_dir.as_posix())
+    assert ret.success
+    expected_out_dir = test_data_dir / 'group'
+    out_dir = test_fmriprep_dir / 'group'
+    expected_files = sorted(expected_out_dir.glob('*'))
+    out_files = sorted(out_dir.glob('*'))
+    expected_file_names = np.array([pp.parts[-1] for pp in expected_files])
+    out_file_names = np.array([pp.parts[-1] for pp in out_files])
+    assert (expected_file_names == out_file_names).all()
+    # test that html files are generated correctly
+    for of, ef in zip(out_files, expected_files):
+        if ef.as_posix().split('.')[-1] == 'html':
+            econtent = ef.read_text()
+            ocontent = of.read_text()
+            assert ocontent == econtent
+    # test that links are valid
+    out_links = sorted((out_dir / 'sub-A00010150' / 'figures').glob('*'))
+    out_links += sorted((out_dir / 'sub-A00010150' / 'ses-20110101' / 'figures').glob('*'))
+    for ll in out_links:
+        assert ll.exists()
+
+def test_make_reportv_2006(tmp_path):
+    test_out_dir = tmp_path
+    test_data_dir = Path(__file__).parent.resolve() / 'data/fmriprep-20.0.6'
+    test_fmriprep_dir = test_out_dir / 'fmriprep-20.0.6'
+    copytree(test_data_dir, test_fmriprep_dir)
+    with pytest.raises(ValueError):
+        ret = make_report([test_fmriprep_dir.as_posix()])
+
+def test_fmriprepgr_batches_v2006(tmp_path, script_runner):
+    test_out_dir = tmp_path
+    test_data_dir = Path(__file__).parent.resolve() / 'data/fmriprep-20.0.6'
+    test_fmriprep_dir = test_out_dir / 'fmriprep-20.0.6'
+    copytree(test_data_dir, test_fmriprep_dir)
+    # get rid of the expected outputs
+    rmtree(test_fmriprep_dir / 'group')
+
+    ret = script_runner.run('fmriprepgr', '--reports_per_page=1', test_fmriprep_dir.as_posix())
+    assert ret.success
+    expected_out_dir = test_data_dir / 'group_batch'
+    out_dir = test_fmriprep_dir / 'group'
+    expected_files = sorted(expected_out_dir.glob('*'))
+    out_files = sorted(out_dir.glob('*'))
+    expected_file_names = np.array([pp.parts[-1] for pp in expected_files])
+    out_file_names = np.array([pp.parts[-1] for pp in out_files])
+    assert (expected_file_names == out_file_names).all()
+    # test that html files are generated correctly
+    for of, ef in zip(out_files, expected_files):
+        if ef.as_posix().split('.')[-1] == 'html':
+            econtent = ef.read_text()
+            ocontent = of.read_text()
+            assert ocontent == econtent
+    # test that links are valid
+    out_links = sorted((out_dir / 'sub-A00010150' / 'figures').glob('*'))
+    out_links += sorted((out_dir / 'sub-A00010150' / 'ses-20110101' / 'figures').glob('*'))
+    for ll in out_links:
+        assert ll.exists()
+
+
+def test_fmriprepgrp_mod_v2006(tmp_path, script_runner):
+    test_out_dir = tmp_path
+    test_data_dir = Path(__file__).parent.resolve() / 'data/fmriprep-20.0.6'
+    test_fmriprep_dir = test_out_dir / 'fmriprep-20.0.6'
+    copytree(test_data_dir, test_fmriprep_dir)
+    # get rid of the expected outputs
+    rmtree(test_fmriprep_dir / 'group')
+    ret = script_runner.run('fmriprepgr', '-f MNI152NLin6Asym', '--drop_background=pepolar', test_fmriprep_dir.as_posix())
+    assert ret.success
+    expected_out_dir = test_data_dir / 'group_mod'
+    out_dir = test_fmriprep_dir / 'group'
+    expected_files = sorted(expected_out_dir.glob('*'))
+    out_files = sorted(out_dir.glob('*'))
+    expected_file_names = np.array([pp.parts[-1] for pp in expected_files])
+    out_file_names = np.array([pp.parts[-1] for pp in out_files])
+    assert (expected_file_names == out_file_names).all()
+    # test that html files are generated correctly
+    for of, ef in zip(out_files, expected_files):
+        if ef.as_posix().split('.')[-1] in ['html', 'svg']:
+            econtent = ef.read_text()
+            ocontent = of.read_text()
+            assert ocontent == econtent
+    # test that links are valid
+    out_links = sorted((out_dir / 'sub-A00010150' / 'figures').glob('*'))
+    out_links += sorted((out_dir / 'sub-A00010150' / 'ses-20110101' / 'figures').glob('*'))
     for ll in out_links:
         assert ll.exists()
