@@ -2,14 +2,14 @@ from setuptools import setup, find_packages
 
 setup(
     name='fmriprep-group-report',
-    version='0.0.7',
+    version='0.0.8',
     author='Dylan M. Nielson',
     author_email='dylan.nielson@gmail.com',
     description='Make consolidated group reports from fmriprep output.',
     url='https://github.com/nimh-comppsych/fmriprep-group-report',
     packages=find_packages(),
     install_requires=[
-        'Click',
+        'Click>=8.0.3',
         'pybids>=0.14',
         'pandas',
         'numpy',
