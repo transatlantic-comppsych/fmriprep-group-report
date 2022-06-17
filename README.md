@@ -1,8 +1,8 @@
 # FMRIPrep Group Report
-[![Run Python Tests](https://github.com/nimh-comppsych/fmriprep-group-report/actions/workflows/ci.yml/badge.svg)](https://github.com/nimh-comppsych/fmriprep-group-report/actions/workflows/ci.yml)  
+[![Run Python Tests](https://github.com/transatlantic-comppsych/fmriprep-group-report/actions/workflows/ci.yml/badge.svg)](https://github.com/transatlantic-comppsych/fmriprep-group-report/actions/workflows/ci.yml)  
 
 Fmriprep produces a bunch of subject level reports and each subject level report has many sub-reports and each subject level report has many sub-reports. 
-I've found it's easier to review things if all of the sub-reports of a given type are consolidated into a single page ([like](https://nimh-comppsych.github.io/fmriprep-group-report/fmriprepgr/test/data/fmriprep/group/consolidated_dseg_000.html) [this](https://nimh-comppsych.github.io/fmriprep-group-report//fmriprepgr/test/data/fmriprep/group/consolidated_reconall_000.html)). The consolidated pages also let you perform the qc serverlessly on each page and download a tsv of your ratings. 
+I've found it's easier to review things if all of the sub-reports of a given type are consolidated into a single page ([like](https://transatlantic-comppsych.github.io/fmriprep-group-report/fmriprepgr/test/data/fmriprep/group/consolidated_dseg_000.html) [this](https://transatlantic-comppsych.github.io/fmriprep-group-report/fmriprepgr/test/data/fmriprep/group/consolidated_reconall_000.html)). The consolidated pages also let you perform the qc serverlessly on each page and download a tsv of your ratings. 
 This package will make a set of consolidated reports from a fmriprep output directory. In principle, if the provided 
 fmriprep output directory follows any of the two path settings described on the [Paths](#paths) section below, the code should run for
 any fmriprep version. Note that code was tested with fmriprep versions 21.0.0, 20.2.3, 20.0.6. 
